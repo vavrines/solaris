@@ -3,12 +3,33 @@ import torch
 from torch.utils.data import Dataset
 
 
-def array_tensor(array, precision=torch.float32):
-    if isinstance(array, np.ndarray):
-        tensor = torch.from_numpy(array)
+def array_tensor(data, precision=torch.float32):
+    if isinstance(data, np.ndarray):
+        tensor = torch.from_numpy(data)
         return tensor.to(precision)
+    elif isinstance(data, (list, tuple)):
+        converted = [array_tensor(x, precision) for x in data]
+        return converted
     else:
-        return array
+        return data
+
+
+class GeneralDataset(Dataset):
+    def __init__(self, x_, y_, precision=torch.float32):
+        x = array_tensor(x_, precision=precision)
+        y = array_tensor(y_, precision=precision)
+
+        self.x = x
+        self.y = y
+
+    def __len__(self):
+        return len(self.y)
+
+    def __getitem__(self, index):
+        if isinstance(self.x, (list, tuple)):
+            return self.x[0][index, :], self.x[1], self.y[index, :]
+        else:
+            return self.x[index, :], self.y[index, :]
 
 
 class DonDataset(Dataset):

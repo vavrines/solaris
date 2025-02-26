@@ -34,3 +34,10 @@ sr.train_don(
     log=True,
 )
 # %%
+# sci_train can be applied as well
+data = sr.GeneralDataset((u, y), sol)
+sr.sci_train(
+    model,
+    data
+)
+# %%

@@ -7,6 +7,15 @@ import solaris as sr
 
 import torch
 # %%
-m = sr.MLP([3, 4, 1])
-m(torch.rand(10, 3))
+model = sr.MLP([3, 4, 1])
+model(torch.rand(10, 3))
+# %%
+x = torch.randn(10, 3)
+y = torch.randn(10, 1)
+data = sr.GeneralDataset(x, y)
+
+sr.sci_train(
+    model,
+    data,
+)
 # %%
