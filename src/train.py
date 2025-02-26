@@ -11,10 +11,10 @@ def sci_train(
     model,
     dataloader: torch.utils.data.DataLoader,
     criterion: nn.Module = nn.MSELoss(),
-    optimizer = None,
+    optimizer=None,
     lr: float = 0.001,
     epochs: int = 100,
-    device: str = 'cpu',
+    device: str = "cpu",
     log: bool = True,
 ):
     """
@@ -42,7 +42,7 @@ def sci_train(
             x, y = batch[:-1], batch[-1]
             if len(x) == 1:
                 x = x[0]
-            
+
             if isinstance(x, torch.Tensor):
                 x = x.to(device)
             else:
