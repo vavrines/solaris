@@ -23,7 +23,7 @@ branch_sizes = [nsensors, 40, 40, 10]  # input function represented by 20 sensor
 trunk_sizes = [ndim, 40, 40, 10] # 2D coordinates as input, output dimension 10
 model = sr.DeepONet(branch_sizes, trunk_sizes).to(device)
 # %%
-sr.train_DON(
+sr.train_don(
     model,
     u,
     y,

@@ -4,9 +4,9 @@ import torch.optim as optim
 import numpy as np
 
 from src.model import DeepONet
-from src.data import Datahandler, array_tensor
+from src.data import DonDataset, array_tensor
 
-def train_DON(
+def train_don(
     model: DeepONet,
     x_branch,
     x_trunk,
@@ -26,8 +26,8 @@ def train_DON(
         y        (torch.tensor) : the targets
     """
 
-    # creating datahandler#
-    dataset = Datahandler(x_branch, x_trunk, y_)
+    # creating DonDataset#
+    dataset = DonDataset(x_branch, x_trunk, y_)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=True
     )

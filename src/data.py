@@ -11,7 +11,7 @@ def array_tensor(array, precision=torch.float32):
         return array
 
 
-class Datahandler(Dataset):
+class DonDataset(Dataset):
     def __init__(self, x_branch_, x_trunk_, y_, precision=torch.float32):
         x_branch = array_tensor(x_branch_, precision=precision)
         x_trunk = array_tensor(x_trunk_, precision=precision)
