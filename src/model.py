@@ -68,9 +68,9 @@ class DeepONet(nn.Module):
 
         Args:
             branch_layer_sizes (list): List of integers specifying the size of each layer in branch network.
-                                      First element is input size, last element is output size (p)
+                                       First element is input size, last element is output size (p)
             trunk_layer_sizes (list): List of integers specifying the size of each layer in trunk network.
-                                     First element is input size, last element is output size (p)
+                                      First element is input size, last element is output size (p)
             activation (nn.Module): Activation function to use between layers (default: Tanh)
             dropout_rate (float): Dropout probability for regularization (default: 0.0)
             output_activation (nn.Module, optional): Activation function to apply to final outputs
@@ -118,20 +118,28 @@ class DeepONet(nn.Module):
 
         Args:
             u (torch.Tensor): Input function values at sensor points, shape [batch_size, branch_input_dim]
-            y (torch.Tensor): Coordinates where output function is evaluated, shape [batch_size, trunk_input_dim]
+            y (torch.Tensor): Coordinates where output function is evaluated, shape [n_points, trunk_input_dim]
+                              or shape [batch_size, n_points, trunk_input_dim]
 
         Returns:
-            torch.Tensor: Output function values at coordinates y, shape [batch_size, 1]
+            torch.Tensor: Output function values at coordinates y
         """
         # Process input function through branch network
         branch_output = self.branch_net(u)  # [batch_size, p]
 
         # Process coordinates through trunk network
-        trunk_output = self.trunk_net(y)  # [batch_size, p]
+        trunk_output = self.trunk_net(y)  # [n_points, p] or [batch_size, n_points, p]
 
-        # Combine outputs with dot product
-        # output = torch.sum(branch_output * trunk_output, dim=1, keepdim=True)
-        output = branch_output @ trunk_output.t()
+        # Handle different tensor dimensions
+        if trunk_output.dim() <= 2:
+            # 2D case: exactly equivalent to original branch_output @ trunk_output.t()
+            output = branch_output @ trunk_output.t()
+        else:
+            # 3D case: use batch matrix multiplication for 3D tensors
+            branch_reshaped = branch_output.unsqueeze(1)  # [batch_size, 1, p]
+            # Batch matrix multiplication
+            output = torch.bmm(trunk_output, branch_reshaped.transpose(1, 2))  # [batch_size, n_points, 1]
+            output = output.squeeze(-1)  # [batch_size, n_points]
 
         # Add bias if specified
         if self.bias is not None:
