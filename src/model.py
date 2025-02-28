@@ -138,7 +138,9 @@ class DeepONet(nn.Module):
             # 3D case: use batch matrix multiplication for 3D tensors
             branch_reshaped = branch_output.unsqueeze(1)  # [batch_size, 1, p]
             # Batch matrix multiplication
-            output = torch.bmm(trunk_output, branch_reshaped.transpose(1, 2))  # [batch_size, n_points, 1]
+            output = torch.bmm(
+                trunk_output, branch_reshaped.transpose(1, 2)
+            )  # [batch_size, n_points, 1]
             output = output.squeeze(-1)  # [batch_size, n_points]
 
         # Add bias if specified

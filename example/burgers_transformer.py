@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import math
 
+
 class TransformerBranchNet(nn.Module):
     def __init__(
         self,
@@ -19,11 +20,11 @@ class TransformerBranchNet(nn.Module):
         num_layers=4,
         num_heads=4,
         dim_feedforward=128,
-        dropout=0.0
+        dropout=0.0,
     ):
         """
         Transformer-based network for processing input functions in DeepONet
-        
+
         Args:
             input_dim (int): Size of input function representation
             output_dim (int): Size of output features (p)
@@ -33,32 +34,36 @@ class TransformerBranchNet(nn.Module):
             dropout (float): Dropout rate
         """
         super(TransformerBranchNet, self).__init__()
-        
+
         # Positional encoding
         self.input_dim = input_dim
-        self.register_buffer("pos_encoding", self._get_positional_encoding(input_dim, 64))
-        
+        self.register_buffer(
+            "pos_encoding", self._get_positional_encoding(input_dim, 64)
+        )
+
         # Embedding layer to project input to transformer dimension
         hidden_dim = num_heads * 16  # Must be divisible by num_heads
         self.embedding = nn.Linear(1, hidden_dim)
-        
+
         # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=hidden_dim,
             nhead=num_heads,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
+
         # Output projection
         self.output_proj = nn.Linear(hidden_dim, output_dim)
 
     def _get_positional_encoding(self, seq_len, d_model):
         """Generate positional encoding for transformer"""
         pos = torch.arange(seq_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
+        )
         pos_enc = torch.zeros(1, seq_len, d_model)
         pos_enc[0, :, 0::2] = torch.sin(pos * div_term)
         pos_enc[0, :, 1::2] = torch.cos(pos * div_term)
@@ -72,23 +77,24 @@ class TransformerBranchNet(nn.Module):
             torch.Tensor: Output features [batch_size, output_dim]
         """
         batch_size = x.shape[0]
-        
+
         # Reshape to sequence format and embed
         x = x.unsqueeze(-1)  # [batch_size, input_dim, 1]
         x = self.embedding(x)  # [batch_size, input_dim, hidden_dim]
-        
+
         # Add positional encoding
-        pos_enc = self.pos_encoding[:, :x.size(1)]
+        pos_enc = self.pos_encoding[:, : x.size(1)]
         x = x + pos_enc
-        
+
         # Apply transformer
         x = self.transformer(x)  # [batch_size, input_dim, hidden_dim]
-        
+
         # Global pooling and projection
         x = torch.mean(x, dim=1)  # [batch_size, hidden_dim]
         x = self.output_proj(x)  # [batch_size, output_dim]
-        
+
         return x
+
 
 class VisONet(nn.Module):
     def __init__(
@@ -104,7 +110,7 @@ class VisONet(nn.Module):
     ):
         """
         Deep Operator Network (DeepONet) implementation with optional Vision Transformer branch
-        
+
         Args:
             branch_layer_sizes (list): List of integers specifying the size of each layer in branch network.
                                        First element is input size, last element is output size (p)
@@ -132,7 +138,7 @@ class VisONet(nn.Module):
             output_dim=branch_layer_sizes[-1],
             num_layers=transformer_layers,
             num_heads=transformer_heads,
-            dropout=dropout_rate
+            dropout=dropout_rate,
         )
 
         # Trunk network (processes the evaluation locations)
@@ -150,7 +156,7 @@ class VisONet(nn.Module):
 
         # Store output activation
         self.output_activation = output_activation
-        
+
     def forward(self, u, y):
         """
         Forward pass through the DeepONet
@@ -177,7 +183,9 @@ class VisONet(nn.Module):
             # 3D case: use batch matrix multiplication for 3D tensors
             branch_reshaped = branch_output.unsqueeze(1)  # [batch_size, 1, p]
             # Batch matrix multiplication
-            output = torch.bmm(trunk_output, branch_reshaped.transpose(1, 2))  # [batch_size, n_points, 1]
+            output = torch.bmm(
+                trunk_output, branch_reshaped.transpose(1, 2)
+            )  # [batch_size, n_points, 1]
             output = output.squeeze(-1)  # [batch_size, n_points]
 
         # Add bias if specified
@@ -189,12 +197,14 @@ class VisONet(nn.Module):
             output = self.output_activation(output)
 
         return output
+
+
 # %%
 from scipy.io import loadmat
 
-vars = loadmat('example/burgers_data_R10.mat')
+vars = loadmat("example/burgers_data_R10.mat")
 # %%
-subsample = 2**3
+subsample = 2 ** 3
 ntrain = 1000
 ntest = 100
 
@@ -206,15 +216,14 @@ grid = np.linspace(0, 1, nsensors)
 grid = grid.reshape(-1, 1)
 # %%
 data = sr.GeneralDataset((xtrain, grid), ytrain)
-dataloader = torch.utils.data.DataLoader(
-    data, batch_size=10, shuffle=True
-)
+dataloader = torch.utils.data.DataLoader(data, batch_size=10, shuffle=True)
 # %%
 branch_sizes = [nsensors, 1024, 1024, 1024]
 trunk_sizes = [1, 1024, 1024, 1024]
 
 model = VisONet(
-    branch_sizes, trunk_sizes,
+    branch_sizes,
+    trunk_sizes,
     activation=nn.Tanh(),
     dropout_rate=0.0,
     output_activation=None,
@@ -223,13 +232,15 @@ model = VisONet(
     transformer_heads=4,
 )
 # %%
-model = sr.sci_train(model, dataloader, lr=1e-4, epochs=100,
-    device="cuda", save_best=True, log=True)
+model = sr.sci_train(
+    model, dataloader, lr=1e-4, epochs=100, device="cuda", save_best=True, log=True
+)
 # %%
 model.to("cpu")
 sol0 = model(*data.x)
 # %%
 import matplotlib.pyplot as plt
+
 # %%
 sol = sol0.detach().numpy()
 # %%

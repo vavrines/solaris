@@ -38,14 +38,15 @@ def sci_train(
     model = model.to(device)
     if optimizer is None:
         optimizer = optim.Adam(model.parameters(), lr=lr)
-        
+
     # Create checkpoint directory if saving checkpoints
     if save_best:
         import os
+
         os.makedirs(checkpoint_dir, exist_ok=True)
-        
+
     # To store the best model (lowest loss)
-    best_loss = float('inf')
+    best_loss = float("inf")
     best_model_state = None
 
     for epoch in range(epochs):
@@ -71,18 +72,20 @@ def sci_train(
             losses.append(loss.item())
 
         avg_loss = np.mean(losses)
-                
+
         # Save best model state
         if save_best and avg_loss < best_loss:
             best_loss = avg_loss
-            best_model_state = {k: v.cpu().detach().clone() for k, v in model.state_dict().items()}
+            best_model_state = {
+                k: v.cpu().detach().clone() for k, v in model.state_dict().items()
+            }
             torch.save(best_model_state, f"{checkpoint_dir}/best_model.pt")
 
         if log:
             print("=" * 30)
             print(f"loss at epoch {epoch+1}: {avg_loss:.6f}")
             print("=" * 30)
-    
+
     # Optionally restore best model
     # model.load_state_dict(best_model_state)
 
