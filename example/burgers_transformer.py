@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import math
+import matplotlib.pyplot as plt
 
 
 class TransformerBranchNet(nn.Module):
@@ -35,15 +36,14 @@ class TransformerBranchNet(nn.Module):
         """
         super(TransformerBranchNet, self).__init__()
 
-        # Positional encoding
-        self.input_dim = input_dim
-        self.register_buffer(
-            "pos_encoding", self._get_positional_encoding(input_dim, 64)
-        )
-
         # Embedding layer to project input to transformer dimension
         hidden_dim = num_heads * 16  # Must be divisible by num_heads
         self.embedding = nn.Linear(1, hidden_dim)
+
+        # Positional encoding
+        self.register_buffer(
+            "pos_encoding", self._get_positional_encoding(input_dim, hidden_dim)
+        )
 
         # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
@@ -202,7 +202,7 @@ class VisONet(nn.Module):
 # %%
 from scipy.io import loadmat
 
-vars = loadmat("example/burgers_data_R10.mat")
+vars = loadmat("burgers_data_R10.mat")
 # %%
 subsample = 2 ** 3
 ntrain = 1000
@@ -216,9 +216,9 @@ grid = np.linspace(0, 1, nsensors)
 grid = grid.reshape(-1, 1)
 # %%
 data = sr.GeneralDataset((xtrain, grid), ytrain)
-dataloader = torch.utils.data.DataLoader(data, batch_size=10, shuffle=True)
+dataloader = torch.utils.data.DataLoader(data, batch_size=50, shuffle=True)
 # %%
-branch_sizes = [nsensors, 1024, 1024, 1024]
+branch_sizes = [nsensors, 1024]
 trunk_sizes = [1, 1024, 1024, 1024]
 
 model = VisONet(
@@ -228,23 +228,28 @@ model = VisONet(
     dropout_rate=0.0,
     output_activation=None,
     bias=True,
-    transformer_layers=4,
+    transformer_layers=3,
     transformer_heads=4,
 )
 # %%
 model = sr.sci_train(
-    model, dataloader, lr=1e-4, epochs=100, device="cuda", save_best=True, log=True
+    model,
+    dataloader,
+    lr=1e-4,
+    epochs=100,
+    device="cuda",
+    multi_gpu=True,
+    save_best=True,
+    log=True,
 )
 # %%
 model.to("cpu")
 sol0 = model(*data.x)
 # %%
-import matplotlib.pyplot as plt
-
-# %%
 sol = sol0.detach().numpy()
 # %%
-idx = 1
+idx = 2
 plt.plot(sol[idx, :])
 plt.plot(ytrain[idx, :])
 # %%
+# torch.save(model.state_dict(), "checkpoints/final_model.pth")
