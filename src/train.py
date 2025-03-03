@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import os
 
 from src.model import DeepONet
 from src.data import DonDataset, array_tensor
@@ -15,6 +16,7 @@ def sci_train(
     lr: float = 0.001,
     epochs: int = 100,
     device: str = "cpu",
+    multi_gpu: bool = False,
     log: bool = True,
     save_best: bool = False,
     checkpoint_dir: str = "./checkpoints",
@@ -36,18 +38,22 @@ def sci_train(
         checkpoint_interval (int): save checkpoint every N epochs
     """
     model = model.to(device)
+    if multi_gpu and torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)  # multiple GPUs
+
     if optimizer is None:
         optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # Create checkpoint directory if saving checkpoints
     if save_best:
-        import os
-
         os.makedirs(checkpoint_dir, exist_ok=True)
 
     # To store the best model (lowest loss)
     best_loss = float("inf")
-    best_model_state = None
+
+    print("=" * 50)
+    print(f"training: {epochs} epochs, device: {device}")
+    print("=" * 50)
 
     for epoch in range(epochs):
         model.train()
@@ -76,18 +82,15 @@ def sci_train(
         # Save best model state
         if save_best and avg_loss < best_loss:
             best_loss = avg_loss
-            best_model_state = {
-                k: v.cpu().detach().clone() for k, v in model.state_dict().items()
-            }
-            torch.save(best_model_state, f"{checkpoint_dir}/best_model.pt")
-
+            torch.save(model.state_dict(), f"{checkpoint_dir}/best_model.pt")
         if log:
-            print("=" * 30)
             print(f"loss at epoch {epoch+1}: {avg_loss:.6f}")
-            print("=" * 30)
 
     # Optionally restore best model
     # model.load_state_dict(best_model_state)
+
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
 
     return model
 
@@ -149,6 +152,6 @@ def train_don(
         avg_loss = np.mean(losses)
 
         if log == True:
-            print("=" * 30)
+            print("=" * 50)
             print(f"loss at epoch {epoch+1}:{avg_loss}")
-            print("=" * 30)
+            print("=" * 50)
